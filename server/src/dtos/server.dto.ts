@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import type { SemVer } from 'semver';
+import { HistoryBuilder } from 'src/decorators';
 import { isoDatetimeToDate } from 'src/validation';
 import z from 'zod';
 
@@ -61,6 +62,7 @@ const ServerVersionResponseSchema = z
     major: z.int().describe('Major version number'),
     minor: z.int().describe('Minor version number'),
     patch: z.int().describe('Patch version number'),
+    prerelease: z.int().nullable().meta(HistoryBuilder.v3().getExtensions()).describe('Pre-release version number'),
   })
   .meta({ id: 'ServerVersionResponseDto' });
 
@@ -147,7 +149,12 @@ export class ServerStorageResponseDto extends createZodDto(ServerStorageResponse
 
 export class ServerVersionResponseDto extends createZodDto(ServerVersionResponseSchema) {
   static fromSemVer(value: SemVer): z.infer<typeof ServerVersionResponseSchema> {
-    return { major: value.major, minor: value.minor, patch: value.patch };
+    return {
+      major: value.major,
+      minor: value.minor,
+      patch: value.patch,
+      prerelease: (value.prerelease[1] as number) ?? null,
+    };
   }
 }
 

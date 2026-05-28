@@ -35,9 +35,7 @@
     userInteraction.versions = versions;
   });
   let isMain = $derived(info?.sourceRef === 'main' && info.repository === 'immich-app/immich');
-  let version = $derived(
-    $serverVersion ? `v${$serverVersion.major}.${$serverVersion.minor}.${$serverVersion.patch}` : null,
-  );
+  let version = $derived($serverVersion ? semverToName($serverVersion) : null);
 
   const getReleaseInfo = (release?: ReleaseEvent) => {
     if (!release || !release?.isAvailable || !authManager.user.isAdmin) {

@@ -430,7 +430,8 @@ export const getReleaseType = (
   return 'none';
 };
 
-export const semverToName = ({ major, minor, patch }: ServerVersionResponseDto) => `v${major}.${minor}.${patch}`;
+export const semverToName = ({ major, minor, patch, prerelease }: ServerVersionResponseDto) =>
+  `v${major}.${minor}.${patch}${prerelease ? `-rc.${prerelease}` : ''}`;
 
 export const withoutIcons = (actions: ActionItem[]): ActionItem[] =>
   actions.map((action) => ({ ...action, icon: undefined }));

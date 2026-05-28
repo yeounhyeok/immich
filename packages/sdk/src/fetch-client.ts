@@ -2074,6 +2074,8 @@ export type ServerVersionResponseDto = {
     minor: number;
     /** Patch version number */
     patch: number;
+    /** Pre-release version number */
+    prerelease: number | null;
 };
 export type VersionCheckStateResponseDto = {
     /** Last check timestamp */

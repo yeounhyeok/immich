@@ -12,7 +12,8 @@ import { handlePromiseError } from 'src/utils/misc';
 
 const asNotification = ({ checkedAt, releaseVersion }: VersionCheckMetadata): ReleaseNotification => {
   return {
-    isAvailable: semver.gt(releaseVersion, serverVersion),
+    // can't use gt because it's broken for release candidates F https://github.com/npm/node-semver/issues/483
+    isAvailable: semver.intersects(`>${serverVersion}`, releaseVersion.toString()),
     checkedAt,
     serverVersion: ServerVersionResponseDto.fromSemVer(serverVersion),
     releaseVersion: ServerVersionResponseDto.fromSemVer(new SemVer(releaseVersion)),
@@ -103,7 +104,8 @@ export class VersionService extends BaseService {
 
       await this.systemMetadataRepository.set(SystemMetadataKey.VersionCheckState, metadata);
 
-      if (semver.gt(releaseVersion, serverVersion)) {
+      // can't use gt because it's broken for release candidates F https://github.com/npm/node-semver/issues/483
+      if (semver.intersects(`>${serverVersion}`, releaseVersion.toString())) {
         this.logger.log(`Found ${releaseVersion}, released at ${new Date(publishedAt).toLocaleString()}`);
         this.websocketRepository.clientBroadcast('on_new_release', asNotification(metadata));
       }
@@ -117,7 +119,11 @@ export class VersionService extends BaseService {
 
   @OnEvent({ name: 'WebsocketConnect' })
   async onWebsocketConnection({ userId }: ArgOf<'WebsocketConnect'>) {
-    this.websocketRepository.clientSend('on_server_version', userId, serverVersion);
+    this.websocketRepository.clientSend(
+      'on_server_version',
+      userId,
+      ServerVersionResponseDto.fromSemVer(serverVersion),
+    );
 
     const { newVersionCheck } = await this.getConfig({ withCache: true });
     if (!newVersionCheck.enabled) {

@@ -22,6 +22,17 @@ describe(VersionService.name, () => {
     mocks.cron.update.mockResolvedValue();
   });
 
+  beforeAll(() => {
+    vitest.mock(import('src/constants.js'), async () => ({
+      ...(await vitest.importActual<typeof import('src/constants.js')>('src/constants.js')),
+      serverVersion: new SemVer('v3.0.0'),
+    }));
+  });
+
+  afterAll(() => {
+    vitest.unmock(import('src/constants.js'));
+  });
+
   it('should work', () => {
     expect(sut).toBeDefined();
   });
@@ -66,9 +77,10 @@ describe(VersionService.name, () => {
   describe('getVersion', () => {
     it('should respond the server version', () => {
       expect(sut.getVersion()).toEqual({
-        major: serverVersion.major,
-        minor: serverVersion.minor,
-        patch: serverVersion.patch,
+        major: 3,
+        minor: 0,
+        patch: 0,
+        prerelease: null,
       });
     });
   });
@@ -131,6 +143,16 @@ describe(VersionService.name, () => {
       expect(mocks.websocket.clientBroadcast).not.toHaveBeenCalled();
     });
 
+    it('should not notify if the version is a release candidate and we are on a stable version', async () => {
+      mocks.serverInfo.getLatestRelease.mockResolvedValue(mockVersionResponse('v3.0.1-rc.1'));
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Success);
+      expect(mocks.systemMetadata.set).toHaveBeenCalledWith(SystemMetadataKey.VersionCheckState, {
+        checkedAt: expect.any(String),
+        releaseVersion: 'v3.0.1-rc.1',
+      });
+      expect(mocks.websocket.clientBroadcast).not.toHaveBeenCalled();
+    });
+
     it('should handle a version check error', async () => {
       mocks.serverInfo.getLatestRelease.mockRejectedValue(new Error('Version service is down'));
       await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Failed);
@@ -169,21 +191,36 @@ describe(VersionService.name, () => {
   describe('onWebsocketConnection', () => {
     it('should send on_server_version client event', async () => {
       await sut.onWebsocketConnection({ userId: '42' });
-      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
+      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', {
+        major: 3,
+        minor: 0,
+        patch: 0,
+        prerelease: null,
+      });
       expect(mocks.websocket.clientSend).toHaveBeenCalledTimes(1);
     });
 
     it('should also send a new release notification', async () => {
       mocks.systemMetadata.get.mockResolvedValue({ checkedAt: '2024-01-01', releaseVersion: 'v1.42.0' });
       await sut.onWebsocketConnection({ userId: '42' });
-      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
+      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', {
+        major: 3,
+        minor: 0,
+        patch: 0,
+        prerelease: null,
+      });
       expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_new_release', '42', expect.any(Object));
     });
 
     it('should not send a release notification when the version check is disabled', async () => {
       mocks.systemMetadata.get.mockResolvedValueOnce({ newVersionCheck: { enabled: false } });
       await sut.onWebsocketConnection({ userId: '42' });
-      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
+      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', {
+        major: 3,
+        minor: 0,
+        patch: 0,
+        prerelease: null,
+      });
       expect(mocks.websocket.clientSend).not.toHaveBeenCalledWith('on_new_release', '42', expect.any(Object));
     });
   });
