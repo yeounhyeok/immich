@@ -235,9 +235,9 @@ class RemoteAlbumService {
     String albumId,
     UserDto uploader,
     List<LocalAsset> localAssets,
-    UploadCallbacks userCallbacks, [
+    UploadCallbacks userCallbacks,
     Completer<void>? cancelToken,
-  ]) async {
+  ) async {
     int addedCount = 0;
     final pendingAdds = <Future<void>>[];
     final localById = {for (final a in localAssets) a.id: a};
